@@ -5,7 +5,8 @@ pacman::p_load(
   purrr,
   ggplot2,
   stringr,
-  tidyverse
+  tidyverse,
+  forcats
   )
 
 region <- rtracklayer::import('input_data/LD_SNPs/CeD_LD_SNPs_Iris_maf-.001_r2-9.regions.bed')
@@ -38,7 +39,8 @@ read_bedfiles <- function(bedfiles) {
 }
 
 bluebed_paths <- list.files('output_data/bluebed_shortname', full.names = TRUE, pattern = 'bed$')
-gsTCC_paths <- list.files('input_data/gsTCC_dhs', full.names = TRUE, pattern = 'bed$')
+gsTCC_paths <- list.files('input_data/gsTCC_dhs', full.names = TRUE, pattern = 'bed$') %>%
+  purrr::discard(~ str_detect(.x, 'merged'))
 beds <- read_bedfiles(c(bluebed_paths, gsTCC_paths))
 
 #
@@ -54,6 +56,7 @@ get_summaries <- function(xs, region, snp) {
 }
 summaries <- get_summaries(beds, region, snp)
 
+# converts a list of lists to a data frame i.e. (list of dicts with identical keys)
 df <- plyr::ldply(summaries, data.frame, .id = NULL) %>%
   as_tibble %>%
   mutate(snp_per_kb = num_snp / reg_cov)
@@ -74,7 +77,6 @@ df %<>%
 
 
 df %>%
-  filter(!str_detect(name, 'merged')) %>%
   ggplot(aes(x = group, y = snp_per_kb, color = group)) +
   geom_boxplot() +
   xlab('T-cell type') +
@@ -82,3 +84,23 @@ df %>%
   ggtitle('Average number of SNPs per kbp open chromatin in strong LD with CeD tag SNPs')
 
 ggsave('output_data/DHS_CeD_LD-SNPs_boxplot.png')
+
+# Prepare data for further processing in other scripts.
+# Create a mapping of SNPs overlapping DHS sites from various files.
+#
+find_dhs_snps <- function(snp, dhs) {
+  not_NA <- function(x) !is.na(x)
+  is_overlapping <- findOverlaps(snp, dhs, select = 'first') %>% not_NA
+  snp[is_overlapping]$name
+}
+
+dhs_snp_df <- function(snp, dhs_name, dhs) {
+  snps <- find_dhs_snps(snp, dhs)
+  tibble(
+    SNP = snps,
+    DHS = dhs_name
+  )
+}
+
+snp_dhs_map <- names(beds) %>% map(~ dhs_snp_df(snp, .x, beds[[.x]])) %>% bind_rows()
+snp_dhs_map %>% write_csv('output_data/snp_dhs_map.csv')
