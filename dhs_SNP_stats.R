@@ -84,23 +84,3 @@ df %>%
   ggtitle('Average number of SNPs per kbp open chromatin in strong LD with CeD tag SNPs')
 
 ggsave('output_data/DHS_CeD_LD-SNPs_boxplot.png')
-
-# Prepare data for further processing in other scripts.
-# Create a mapping of SNPs overlapping DHS sites from various files.
-#
-find_dhs_snps <- function(snp, dhs) {
-  not_NA <- function(x) !is.na(x)
-  is_overlapping <- findOverlaps(snp, dhs, select = 'first') %>% not_NA
-  snp[is_overlapping]$name
-}
-
-dhs_snp_df <- function(snp, dhs_name, dhs) {
-  snps <- find_dhs_snps(snp, dhs)
-  tibble(
-    SNP = snps,
-    DHS = dhs_name
-  )
-}
-
-snp_dhs_map <- names(beds) %>% map(~ dhs_snp_df(snp, .x, beds[[.x]])) %>% bind_rows()
-snp_dhs_map %>% write_csv('output_data/snp_dhs_map.csv')
