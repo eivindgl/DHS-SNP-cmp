@@ -3,4 +3,5 @@
 .RData
 .Ruserdata
 input_data/bluebed_dhs
+input_data/raw-rasqual-snps
 output_data
