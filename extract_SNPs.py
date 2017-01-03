@@ -1,3 +1,10 @@
+'''
+NB!!
+
+This script is currently not used...
+The immunobase regions are GRCh38 and too big. This script is deprecated.
+'''
+
 import os
 import csv
 import re
@@ -54,7 +61,7 @@ def write_ib_bed(ib_bed_path, regions, overwrite=True):
 #
 # Write extarctSNP bash script (no execute)
 #
-def write_extractSNP_script(script_path, vcf_dir, vcf_name_pattern,
+def write_extractSNP_script(script_path, vcf_dir, vcf_name_pattern, regions,
         overwrite=True):
     if os.path.isfile(script_path) and not overwrite:
         print('File exists. skipping', script_path)
@@ -62,11 +69,12 @@ def write_extractSNP_script(script_path, vcf_dir, vcf_name_pattern,
     with open(script_path, 'w') as f:
         print('set -u', file=f)
         print('set -e', file=f)
+        print('MAF=0.05', file=f)
         for x in regions:
             vcf_path = os.path.join(vcf_dir,
                     vcf_name_pattern.format(chrom=x.chrom))
-            print(x.extract_SNPs_command(vcf_path), file=f)
-    print('Wrote to', gen_script_path)
+            print(x.extract_SNPs_command(vcf_path, maf=r'$MAF'), file=f)
+    print('Wrote to', script_path)
 
 #
 # Merge freq counts to bed file with region names
@@ -121,8 +129,8 @@ def exec():
         os.makedirs(count_dir)
     regions = read_immuobase_regions(immunobase_regions)
     write_ib_bed(immunobase_bed, regions, overwrite=False)
-    write_extractSNP_script(gen_script_path, vcf_dir, vcf_name_pattern,
-        overwrite=False)
+    write_extractSNP_script(gen_script_path, vcf_dir, vcf_name_pattern, regions,
+        overwrite=True)
     merge_SNP_counts(count_dir, os.path.join(out_dir, 'CEL_SNPs.bed'), overwrite=False)
 
 if __name__ == '__main__':

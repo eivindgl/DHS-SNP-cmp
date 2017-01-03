@@ -8,24 +8,23 @@ pacman::p_load(
   tidyverse
   )
 
-region <- import('output_data/overlap/Immunobase_Celiac_Disease.bed')
-dhs <- import('input_data/bluebed_dhs/s6997/DNaseI/ENCFF001CKO.bed')
-snp <- import('output_data/overlap/CEL_SNPs.bed')
+region <- rtracklayer::import('input_data/LD_SNPs/CeD_LD_SNPs_Iris_maf-.001_r2-9.regions.bed')
+snp <- rtracklayer::import('input_data/LD_SNPs/CeD_LD_SNPs_Iris_maf-.001_r2-9.bed')
 
 genome_coverage <- function(x, by = 1) {
   cov_bp = x %>% coverage %>% sum %>% sum
   cov_bp / by
 }
 
-collect_stats <- function(snp, dhs, name = 'unknown') {
+collect_stats <- function(region, snp, dhs, name = 'unknown') {
   rdhs <- GenomicRanges::intersect(dhs, region)
   list(
     name = name,
     tot_cov = genome_coverage(dhs, by = 1e3),
     reg_cov = genome_coverage(rdhs, by = 1e3),
     reg_num = length(rdhs),
-    num_snp = genome_coverage(GenomicRanges::intersect(rdhs, snp)),
-    tot_snp = length(snp)
+    num_snp = length(GenomicRanges::intersect(rdhs, snp)),
+    tot_snp = length(GenomicRanges::intersect(region, snp))
   )
 }
 
@@ -42,20 +41,57 @@ bluebed_paths <- list.files('output_data/bluebed_shortname', full.names = TRUE, 
 gsTCC_paths <- list.files('input_data/gsTCC_dhs', full.names = TRUE, pattern = 'bed$')
 beds <- read_bedfiles(c(bluebed_paths, gsTCC_paths))
 
+macs_paths <- list.files('input_data/gsTCC_dhs_macs', full.names = TRUE)
+macs_beds <- read_bedfiles(macs_paths)
 #
 # compute summaries
 #
-summaries <- list()
-for (name in names(beds)) {
-  print(name)
-  summaries[[name]] <- collect_stats(snp, beds[[name]], name)
+get_summaries <- function(xs, region, snp) {
+  summaries <- list()
+  for (name in names(xs)) {
+    print(name)
+    summaries[[name]] <- collect_stats(region, snp, xs[[name]], name)
+  }
+  summaries
 }
-df <- plyr::ldply(summaries, data.frame, .id = NULL) %>% tibble::as_tibble()
+summaries <- get_summaries(beds, region, snp)
+macs_summaries <- get_summaries(macs_beds, region, snp)
 
-df$group <- str_sub(df$name, 1, 3)
+df <- plyr::ldply(summaries, data.frame, .id = NULL) %>%
+  as_tibble %>%
+  mutate(snp_per_kb = num_snp / reg_cov)
+
+
+macs_df <- plyr::ldply(macs_summaries, data.frame, .id = NULL) %>%
+  as_tibble %>%
+  mutate(snp_per_kb = num_snp / reg_cov)
+
+tmp <- df %>%
+  filter(!str_detect(df$name, '^(TCC|merge)')) %>%
+  mutate(group = str_replace(name, '_\\d$', ''))
+
+df %<>%
+  filter(str_detect(df$name, '^(TCC|merge)')) %>%
+  mutate(group = paste('TCC', str_extract(name, '\\d+$'), sep = '-')) %>%
+  bind_rows(tmp)
+
+macs_df %<>%
+  mutate(
+    group = str_replace(name, '_peaks$', ''),
+    group = paste('mTCC', str_extract(group, '\\d+$'), sep = '-'))
+
+# macs_df way worse than homer df, so this is not interesting ...
+# df %<>% bind_rows(macs_df)
+df %<>%
+  mutate(group = fct_relevel(group,
+                             'TCC-0', 'TCC-10', 'TCC-30', 'TCC-180',
+                             'T-naive', 'Th-1', 'Th-2', 'Th-17', 'T-reg', 'Jurkat'))
+
+
 df %>%
-  #dplyr::filter(reg_cov < 400) %>%
-  ggplot() + geom_point(aes(x = reg_cov, y = num_snp, color = group))
-#ggplot(df) + geom_point(aes(x = reg_cov, y = num_snp))
-
-df %>% mutate(snp_cov_kb = num_snp / reg_cov) %>% ggplot + geom_histogram(aes(snp_cov_kb))
+  filter(!str_detect(name, 'merged')) %>%
+  ggplot(aes(x = group, y = snp_per_kb, color = group)) +
+  geom_boxplot() +
+  xlab('T-cell type') +
+  ylab('SNPs per kbp') +
+  ggtitle('Average number of SNPs per kbp open chromatin in strong LD with CeD tag SNPs')

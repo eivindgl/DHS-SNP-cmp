@@ -12,6 +12,10 @@ short_name = {
         'T-helper 17 cell': 'Th-17'
 }
 
+skip_list = {
+        'ENCFF001UUF_meta.json': 'Extremely low read depth (see https://www.encodeproject.org/experiments/ENCSR000EIG/)'
+        }
+
 def coverage(p):
     def length(line):
         start, end = line.split()[1:3]
@@ -41,6 +45,9 @@ log_file = open(os.path.join(out_dir, 'sample_map.tsv'), 'w')
 print('short_name', 'src', 'src_desc', 'dst', sep='\t', file=log_file)
 
 for p in json_files:
+    if os.path.basename(p) in skip_list:
+        print('Skipping {} because: {}'.format(p, skip_list[os.path.basename(p)]))
+        continue
     with open(p) as f:
         m = json.load(f)
     long_name = biosample_name(m)
@@ -51,7 +58,7 @@ for p in json_files:
         fname = '{}_{}.bed'.format(name, seen_times[name])
         dst = os.path.join(out_dir, fname)
         seen_times[name] += 1
-        print('Copying {} to {}', name, dst) 
+        print('Copying {} to {}'.format(name, dst))
         shutil.copyfile(bed_path, dst)
         print(name, bed_path, p, dst, sep='\t', file=log_file)
 

@@ -14,6 +14,8 @@ given by the uniform distribution of SNPs.
 Maybe it makes more sense to only look at very common MAFs (%5+).
 Rationale is that GWAS studies can usually only pick these up.
 
+Perhaps also restrict analysis to the EUR subset (because this is the source of the immunochip)
+
 ## Extract common SNPs in GWAS disease associated regions.
 See extract\_SNPs.py script. Generates SNP frequency list
 for each region. This is again merged to a common bed file of SNPs.
