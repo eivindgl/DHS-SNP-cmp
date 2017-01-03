@@ -41,8 +41,6 @@ bluebed_paths <- list.files('output_data/bluebed_shortname', full.names = TRUE, 
 gsTCC_paths <- list.files('input_data/gsTCC_dhs', full.names = TRUE, pattern = 'bed$')
 beds <- read_bedfiles(c(bluebed_paths, gsTCC_paths))
 
-macs_paths <- list.files('input_data/gsTCC_dhs_macs', full.names = TRUE)
-macs_beds <- read_bedfiles(macs_paths)
 #
 # compute summaries
 #
@@ -55,14 +53,8 @@ get_summaries <- function(xs, region, snp) {
   summaries
 }
 summaries <- get_summaries(beds, region, snp)
-macs_summaries <- get_summaries(macs_beds, region, snp)
 
 df <- plyr::ldply(summaries, data.frame, .id = NULL) %>%
-  as_tibble %>%
-  mutate(snp_per_kb = num_snp / reg_cov)
-
-
-macs_df <- plyr::ldply(macs_summaries, data.frame, .id = NULL) %>%
   as_tibble %>%
   mutate(snp_per_kb = num_snp / reg_cov)
 
@@ -75,13 +67,6 @@ df %<>%
   mutate(group = paste('TCC', str_extract(name, '\\d+$'), sep = '-')) %>%
   bind_rows(tmp)
 
-macs_df %<>%
-  mutate(
-    group = str_replace(name, '_peaks$', ''),
-    group = paste('mTCC', str_extract(group, '\\d+$'), sep = '-'))
-
-# macs_df way worse than homer df, so this is not interesting ...
-# df %<>% bind_rows(macs_df)
 df %<>%
   mutate(group = fct_relevel(group,
                              'TCC-0', 'TCC-10', 'TCC-30', 'TCC-180',
@@ -95,3 +80,5 @@ df %>%
   xlab('T-cell type') +
   ylab('SNPs per kbp') +
   ggtitle('Average number of SNPs per kbp open chromatin in strong LD with CeD tag SNPs')
+
+ggsave('output_data/DHS_CeD_LD-SNPs_boxplot.png')
