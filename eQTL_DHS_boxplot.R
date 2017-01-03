@@ -1,8 +1,17 @@
 pacman::p_load(
   tidyverse,
   forcats,
-  stringr
+  stringr,
+  magrittr
 )
+
+order_by_median_pvalue <- function(df) {
+  cdf <- df %>%
+    group_by(DHS) %>%
+    summarize(medianp = median(pvalue), meanp = mean(pvalue)) %>%
+    arrange(medianp)
+  df %>% mutate(DHS = factor(DHS, levels = cdf$DHS))
+}
 
 gen_boxplot <- function(snp_score, bed_snp_map, timepoint) {
   df <- inner_join(bed_snp_map, snp_score)
@@ -17,12 +26,13 @@ gen_boxplot <- function(snp_score, bed_snp_map, timepoint) {
     mutate(group = paste('TCC', str_extract(DHS, '\\d+$'), sep = '-')) %>%
     bind_rows(tmp)
 
-  cdf <- df %>%
-    group_by(DHS) %>%
-    summarize(medianp = median(pvalue), meanp = mean(pvalue)) %>%
-    arrange(medianp)
-
-  df <- df %>% mutate(DHS = factor(DHS, levels = cdf$DHS))
+  # Add ALL SNPs for comparison
+  df <- snp_score %>%
+    mutate(DHS = 'ALL', group = 'ALL') %>%
+    filter(!is.na(pvalue)) %>%
+    bind_rows(df)
+  #
+  df %<>% order_by_median_pvalue
 
   p <- df %>%
     ggplot(aes(DHS, pvalue, color = group)) +
