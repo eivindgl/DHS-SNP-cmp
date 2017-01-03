@@ -1,28 +1,7 @@
 # DHS-SNP-cmp
-See if gsTCC cells are overlapping more SNPs in GWAS associated disease regions
-than other T-cell types.
-
-## Status
-A course analysis works and finds a very linear relationships between coverage in CeD regions
-and SNP overlap. This might be correct, but it is possbile that I do something stupid when
-selecting SNPs. I currently select all snps with MAF > 1% in disease associated regions.
-This gives me a lot of SNPs that seems to be quite uniformly distributed across the regions.
-Therefore, it seems likely that the linear relationship between DHS coverage and #SNPs is
-given by the uniform distribution of SNPs.
-
-# Notes / Thoughts / Possible extentions
-Maybe it makes more sense to only look at very common MAFs (%5+).
-Rationale is that GWAS studies can usually only pick these up.
-
-Perhaps also restrict analysis to the EUR subset (because this is the source of the immunochip)
-
-## Extract common SNPs in GWAS disease associated regions.
-See extract\_SNPs.py script. Generates SNP frequency list
-for each region. This is again merged to a common bed file of SNPs.
-## Find overlap with DHS-sites from various T-cell subsets.
-see count\_overlaps.bash
-## Generate a summary.
-
+Extract common SNPs in GWAS disease associated regions.
+Find overlap with DHS-sites from various T-cell subsets.
+Generate a summary.
 
 ## Input Data
 
@@ -36,6 +15,13 @@ tail --bytes=+4 input_data/Immunobase_Celiac_Disease.csv > tmp
 mv tmp input_data/Immunobase_Celiac_Disease.csv
 ```
 
-### 1000g Phase 3
-I use this a the source for SNPs. I only extract common SNPs (maf 0.01)
-in the immunobase regions
+### LD SNPs
+CeD tag SNPs are located in `input_data/CeD_tag_SNPs.bed`.
+I used the tag list with the web service http://raggr.usc.edu to find
+SNPs in strong LD.
+
+The paramters were:
+* MAF 0.001
+* R^2 > 0.9
+* CEU european population (1000g)
+
