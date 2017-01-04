@@ -12,8 +12,6 @@ mart <- useMart(
   dataset = 'hsapiens_gene_ensembl')
 
 
-df <- read_tsv('input_data/raw-rasqual-snps/gsTCC_lead_eigenfmt/lead_SNP_gsTCC_time_180.merged.eigenmt.tsv')
-
 load_exp <- function(p, p_lim = 1e-3) {
   df <- read_tsv(p, col_types = 'ccdddd', progress = FALSE)
   df$FDR <- p.adjust(df$pvalue, method = 'BH')
@@ -46,3 +44,10 @@ df <- inner_join(df, hgnc) %>%
   arrange(pvalue)
 
 df %>% write_tsv('output_data/rasqual_low_pvalue.tsv')
+
+full_score_paths <- list.files('input_data/raw-rasqual-snps/gsTCC_all_eigenfmt', full.names = TRUE)
+df <- full_score_paths %>%
+  map(load_exp) %>%
+  bind_rows
+
+df %>% write_tsv('output_data/rasqual_full_low_pvalue.tsv')

@@ -84,3 +84,5 @@ df %>%
   ggtitle('Average number of SNPs per kbp open chromatin in strong LD with CeD tag SNPs')
 
 ggsave('output_data/DHS_CeD_LD-SNPs_boxplot.png')
+
+df %>% write_csv('output_data/DHS_CeD_LD_summary.csv')
