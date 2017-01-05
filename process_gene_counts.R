@@ -30,6 +30,7 @@ vdf %>% write_tsv('input_data/counts_VST_median.tsv')
 #
 # rename count table so it corresponds to vcf names
 #
+dir.create('output_data/expression', showWarnings = FALSE)
 x <- vst %>%
   gather(sample, count, -geneid) %>%
   mutate(timepoint = str_extract(sample, 't\\d+'))
@@ -50,9 +51,8 @@ for (timepoint in names(dfs)) {
 
   dfs[[timepoint]] %>%
     inner_join(name_map, by = c('sample' = 'long_name')) %>%
-    select(name, geneid, count) %>%
+    dplyr::select(name, geneid, count) %>%
     spread(name, count) %>%
-    write_tsv(paste('output_data/expression_vst_', timepoint, '_renamed.tsv', sep=''))
-
+    write_tsv(paste('output_data/expression/vst_', timepoint, '_renamed.tsv', sep = ''))
 }
 
