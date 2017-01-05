@@ -59,14 +59,21 @@ mart <- useMart(
   dataset = 'hsapiens_gene_ensembl')
 
 hgnc <- getBM(
-  attributes = c('chromosome_name', 'start_position', 'end_position', 'external_gene_id'),
+  attributes = c(
+    'chromosome_name', 'start_position', 'end_position',
+    'external_gene_id', 'ensembl_gene_id'),
   filters = 'ensembl_gene_id',
   values = feqtl$gene,
   mart = mart) %>%
   as_tibble %>%
   mutate(chromosome_name = paste('chr', chromosome_name, sep = ''))
 
-hgnc %>%
-  arrange(chromosome_name, start_position) %>%
-  dplyr::distinct() %>%
-  write_tsv('~/Downloads/feQTL_genes.bed', col_names = FALSE)
+vdf <- read_tsv('input_data/counts_median.tsv')
+edf <- hgnc %>%
+  dplyr::select(chrom = chromosome_name,
+         start = start_position,
+         end = end_position,
+         hgnc = external_gene_id,
+         geneid = ensembl_gene_id) %>%
+  inner_join(vdf)
+
