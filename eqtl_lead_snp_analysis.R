@@ -1,3 +1,9 @@
+#
+# Currently full SNP set (i.e. all SNPs gene pairs with p-value < 1e-3)
+# This scripts is currently a little messy.
+#
+# Counts eQTL SNPs per DHS type
+# Counts eQTL SNPs per CeD loci (only two; 2p16.1 and 21q22.3 have multiple eQTLs)
 pacman::p_load(
   tidyverse,
   rtracklayer,
