@@ -30,7 +30,7 @@ read_bedfiles <- function(bedfiles) {
 #
 find_dhs_snps <- function(snp, dhs) {
   assert_that(snp %>% mcols %has_name% 'name')
-  not_NA <- function(x) !is.na(x)
+  not_NA <- compose(`!`, is.na)
   is_overlapping <- findOverlaps(snp, dhs, select = 'first') %>% not_NA
   snp[is_overlapping]$name
 }
@@ -73,3 +73,31 @@ names(dhs) %>%
   write_csv('output_data/all_snp_dhs_map.csv')
 
 find_dhs_snps(ced_snps, dhs[[1]])
+
+#
+# Create Mapping between eQTL SNPs and DHS sites within 1MB
+#
+eqtl_snp_names <- unique(read_tsv('output_data/rasqual_full_low_pvalue.tsv')$snps)
+eqtl_snps <- snp[eqtl_snp_names]
+eqtl_snps_1Mb <- flank(eqtl_snps, 5e5, both = TRUE)
+
+find_dhs_snps <- function(snp, dhs) {
+}
+
+f <- function(snp, dhs_name, dhs) {
+  assert_that(snp %>% mcols %has_name% 'name')
+  hits <- findOverlaps(snp, dhs)
+  snps <- snp[from(hits)]
+  d <- dhs[to(hits)]
+  tibble(
+    SNP = snps$name,
+    DHS = dhs_name,
+    bp = width(d)
+  )
+}
+
+
+x <- names(dhs) %>%
+  map(~ f(eqtl_snps, .x, dhs[[.x]])) %>%
+  bind_rows() %>%
+  write_tsv('output_data/eqtl_snp_1Mb_dhs_map.tsv')
