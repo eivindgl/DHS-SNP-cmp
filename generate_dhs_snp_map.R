@@ -5,7 +5,8 @@ pacman::p_load(
   assertthat,
   GenomicRanges,
   VariantAnnotation,
-  rtracklayer
+  rtracklayer,
+  biomaRt
   )
 
 vcf <- readVcf('input_data/all.vcf', genome = 'GRCh37')
@@ -14,6 +15,33 @@ snp <- rowRanges(vcf)
 seqlevelsStyle(snp) <- 'UCSC'
 # code below expects SNP name to be in mcols$name
 mcols(snp)$name <- names(snp)
+
+ensembl_version = 'feb2014.archive.ensembl.org'
+snp_mart <- useMart(
+  'ENSEMBL_MART_SNP',
+  host = ensembl_version,
+  dataset = 'hsapiens_snp')
+
+ced_top <- list(path = 'input_data/dubois_2010_top1K_SNPs.tsv')
+ced_top$orig <- read_tsv(ced_top$path)
+ced_top$bm <- getBM(
+    attributes = c('refsnp_id', 'chr_name', 'chrom_start'),
+    filters = 'snp_filter',
+    values = ced_top$orig$SNP,
+    mart = snp_mart) %>%
+  as_tibble()
+
+ced_top$bm_clean <- ced_top$bm %>%
+  dplyr::rename(name = refsnp_id) %>%
+  group_by(name) %>%
+  summarise(
+    chrom = first(chr_name),
+    start = first(chrom_start)) %>%
+  mutate(end = start + 1) %>%
+  dplyr::select(chrom, start, end, name)
+
+ced_top$gr <- makeGRangesFromDataFrame(ced_top$bm_clean, keep.extra.columns = TRUE)
+seqlevelsStyle(ced_top$gr) <- 'UCSC'
 
 read_bedfiles <- function(bedfiles) {
   xs <- list()
@@ -65,6 +93,15 @@ names(dhs) %>%
   write_csv('output_data/ced_snp_dhs_map.csv')
 
 #
+# Create mapping between Top 1000 SNPs from Dubois 2010 CeD GWAS paper and DHS sites
+#
+names(dhs) %>%
+  map(~ dhs_snp_df(ced_top$gr, .x, dhs[[.x]])) %>%
+  bind_rows() %>%
+  write_csv('output_data/ced_dubois_snp_dhs_map.csv')
+
+
+#
 # Create Mapping between all immunochip SNPs and DHS sites
 #
 names(dhs) %>%
@@ -77,7 +114,7 @@ find_dhs_snps(ced_snps, dhs[[1]])
 #
 # Create Mapping between eQTL SNPs and DHS sites within 1MB
 #
-eqtl_snp_names <- unique(read_tsv('output_data/rasqual_full_low_pvalue.tsv')$snps)
+eqtl_snp_names <- unique(read_tsv('output_data/rasqual_fulll_ow_pvalue.tsv')$snps)
 eqtl_snps <- snp[eqtl_snp_names]
 eqtl_snps_1Mb <- flank(eqtl_snps, 5e5, both = TRUE)
 

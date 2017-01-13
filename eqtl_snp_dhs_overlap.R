@@ -13,12 +13,13 @@ pacman::p_load(
 
 dir.create('tmp', showWarnings = FALSE)
 ced_regions <- import('output_data/hg19_Immunobase_Celiac_Disease.bed')
-eqtl <- read_tsv('output_data/rasqual_low_pvalue.tsv') %>%
+eqtl <- read_tsv('output_data/rasqual_all_sig_FDR.tsv') %>%
   dplyr::rename(SNP = snps)
-feqtl <- read_tsv('output_data/rasqual_full_low_pvalue.tsv') %>%
+feqtl <- read_tsv('output_data/rasqual_full_all_sig_FDR.tsv') %>%
   dplyr::rename(SNP = snps)
 
 snp_dhs <- read_csv('output_data/all_snp_dhs_map.csv')
+ced_snp_dhs <- read_csv('output_data/ced_snp_dhs_map.csv')
 eqtl_snp_dhs <- read_tsv('output_data/eqtl_snp_1Mb_dhs_map.tsv')
 
 #

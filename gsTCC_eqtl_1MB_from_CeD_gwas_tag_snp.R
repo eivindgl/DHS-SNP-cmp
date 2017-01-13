@@ -5,8 +5,8 @@ pacman::p_load(
 )
 
 gwas_snps <- import('input_data/CeD_tag_SNPs.bed')
-gwas_snps_table <- read_tsv('input_data/CeD_tag_SNPs.bed', col_names = c('chrom', 'snp_start', 'snp_end', 'SNP'))
-eqtl_table <- read_tsv('output_data/rasqual_low_pvalue.tsv')
+gwas_snps_table <- read_tsv('input_data/CeD_tag_SNPs.bed', col_names = c('snp_chrom', 'snp_start', 'snp_end', 'SNP'))
+eqtl_table <- read_tsv('output_data/rasqual_all_sig_FDR.tsv')
 
 ensembl_version = 'feb2014.archive.ensembl.org'
 mart <- useMart(
@@ -39,11 +39,18 @@ hits <- findOverlaps(gwas_snps_1mb, eqtl)
 eqtl_gwas <- bind_cols(
   eqtl_df[to(hits), ],
   gwas_snps_table[from(hits), ]
-) %>%
-  as_tibble %>%
-  dplyr::select(
+) #%>%
+eqtl_gwas %>% dplyr::select(
     chrom, start, end, hgnc, SNP, SNP_pos = snp_start)
 
 eqtl_gwas %>%
   arrange(chrom, start) %>%
   write_tsv('output_data/eQTL_genes_within_1MB_of_CeD_tag_SNP.tsv')
+
+eqtl_gwas %>%
+  group_by(hgnc) %>%
+  summarize(
+    CeD_tag_SNPs = n()
+  ) %>%
+  arrange(hgnc) %>%
+  print(n = Inf)

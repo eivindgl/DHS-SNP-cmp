@@ -8,3 +8,5 @@ output_data
 input_data/counts_VST_median.tsv
 input_data/counts_median.tsv
 input_data/ASE_counts
+eqtl_gwas_and_dhs.html
+sketch.R

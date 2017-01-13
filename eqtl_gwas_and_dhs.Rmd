@@ -1,0 +1,106 @@
+---
+title: "eQTL/GWAS SNPs and DHS sites"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+pacman::p_load(
+  tidyverse,
+  stringr,
+  forcats,
+  magrittr
+)
+```
+
+## GWAS SNPs associated with cell type specific DHS sites
+We want to visualize whether more disease relevant cell-types have more disease associated SNPs within DHS sites.
+I used the CEU subset of the 1000genome project to find all SNPs in strong LD with the 62 tag SNPs associated with CeD.
+The amount of DHS SNPs per locus is normalized by the overall DHS coverage within the CeD locus for each cell type.
+
+Indeed, Gluten specific T-cell clones and Encode's Th-1 and Th-17 cell lines have the strongest association with celiac GWAS tag SNPs and neighboring SNPs in strong LD.
+```{r include = FALSE}
+# input file generated in "dhs_SNP_stats.R"
+df <- read_csv('output_data/DHS_CeD_LD_summary.csv') %>% 
+  dplyr::mutate(group = fct_relevel(group,
+                             'TCC-0', 'TCC-10', 'TCC-30', 'TCC-180',
+                             'T-naive', 'Th-1', 'Th-2', 'Th-17', 'T-reg', 'Jurkat'))
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = group, y = snp_per_kb, color = group)) +
+  geom_boxplot() +
+  xlab('T-cell type') +
+  ylab('SNPs per kbp') +
+  ggtitle('Number of SNPs in DHS sites per kbp DHS in CeD loci',
+          subtitle = 'SNPs are in strong LD with CeD GWAS tag SNPs') +
+  labs(caption = 'Inspired by figure 3 in Maurano et. al 2012')
+```
+
+## SNP DHS overlap increases as GWAS P-value decreases
+Maurano et al fig 5 showed that the association between disease associated SNPs and DHS sites is stronger in disease relevant cell types.
+They also nicely showed that this association increased with more significant P-values. 
+We recreate this plot using Celiac Disease data and relevant cell types.
+Top 1000 tag SNPs from Dubois et al 2010 are available in the supplemental material.
+Most of these SNPs did not reach genome wide significance, but they do have a low enough 
+P-value to be potentially interesting.
+We compute fold change for P-value interval *i* and cell type *k* in the following manner:
+
+ * $G$ total number of SNPs.
+ * $D_k$ number of SNPs within DHS sites for cell type *k*.
+ * $P_i$ is the number of SNPs in P-value category *i*.
+ * $D_k P_i$ is the number of SNPs in P-value category *i* within cell type *k* DHS sites.
+$$F_ik=\frac{
+\frac{D_kP_i}{P_i}}{
+\frac{D_k}{G}
+}$$
+
+
+```{r include = FALSE}
+# from ced_top_snp_dhs_fold_change_over_genome_avg.R
+snp_df <- read_csv('output_data/Maurano_2012_fig5_inspired_data.csv') %>% 
+  dplyr::mutate(
+    pcat = fct_relevel(pcat, "2.5e-4<5e-4", "1e-4<2.5e-4", "1e-5<1e-4", "<1e-5"))  
+```
+```{r}
+snp_df %>%
+  mutate(
+    group = fct_reorder(group, median_fchange)
+  ) %>%
+  ggplot(aes(group, fold_change, color = pcat)) +
+  geom_boxplot() +
+  scale_color_discrete(name = 'P-value groups') +
+  labs(
+    title = 'SNPs in DHS sites per cell type for top 1000 CeD GWAS SNPs ',
+    subtitle = 'Fold change over genome average for cell type. Grouped by GWAS P-value intervals.',
+    x = '',
+    y = 'Fold Change',
+    caption = 'SNP P-values from top1000 suppl from Dubois et al 2010.
+    Inspired by figure 5 in Maurano et. al 2012'
+  ) 
+```
+
+
+## A misleading aspect of Maurano et al 2012
+I believe the paper presents two key messages:
+
+1. A disease associated SNP is **most likely within a DHS site** in a disease relevant cell type.
+2. More significant GWAS SNPs increases the likelihood of a DHS site presence.
+
+I don't think it makes the paper less interesting, but the authors have a very lenient definition of a DHS site.
+This incorrectly gives the impression of an almost 1:1 relationship with disease associated SNPs and DHS sites in disease relevant cell types.
+I will show why below, but I think a more honest key message would have been:
+
+1. A disease associated SNP is **most likely not within heterochromatin** in a disease relevant cell type.
+2. More significant GWAS SNPs increases the likelihood of a DHS site presence.
+
+Maurano et al 2012 do not explictly describe how they define DHS regions and what proportion of the genome they cover. They do not mention at all how they define DHS regions in a cell type agnostic manner, but it seems to be a union of all cell types. 
+
+43% of all 1000 genome SNPS is covered by a DHS according to the figure below (Maurano et al 2012 Fig S2A). The 1000genome SNPs are essentially all common SNPs (minor allele frequency > 1%) which densly covers most of the genome. 
+This would indicate that at least ~40% of the genome is covered by DHS sites according to Maurano et al. This is in stark contrast to how the rest of the Encode consortium have processed and published the same data where about 30 Mbp (or about 0.01% of the genome) is covered by DHS sites.
+![Maurano et al 2012 Fig S2A](input_data/images/Maurano_2012_FigS2_SNPs_and_DHSs.png)
+
+## How many CeD SNPs are overlapping DHS sites for various cell types?
+
+## CeD eQTL DHS association by P-value intervals
