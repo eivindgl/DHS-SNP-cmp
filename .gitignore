@@ -10,3 +10,5 @@ input_data/counts_median.tsv
 input_data/ASE_counts
 eqtl_gwas_and_dhs.html
 sketch.R
+input_data/gene_list.tsv
+eqtl_gwas_and_dhs.pdf
