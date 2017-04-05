@@ -1,0 +1,37 @@
+---
+title: "Disease SNPs and cell types"
+output: html_notebook
+---
+
+Farh 2015 et al has a set of PIC SNPs, computed from GWAS studies, that they find
+to be likely candidates for causal SNPs. They about 300 such SNPs for celiac disease
+and I wonder:
+  1. How these SNPs correspond to the 62 tag SNPs (are they all covered and so on)
+  2. Are the PIC snps simply just neighboring SNPs from the immunochip array?
+  3. How does the Immunochip array SNPs cluster throughout the genome (187 regions
+     are densly covered).
+```{r}
+pacman::p_load(
+  tidyverse,
+  VariantAnnotation,
+  rtracklayer
+)
+immunochip_snps <- readVcf('input_data/all.vcf', genome = 'GRCh37') %>% rowRanges()
+seqlevelsStyle(immunochip_snps) <- 'UCSC'
+pics_ced <- read_csv('input_data/celiac_PICS_result.csv') %>% 
+  dplyr::mutate(start = pos, end = pos + 1) %>% 
+  dplyr::select(chr, start, end, SNP) %>% 
+  GRanges()
+```
+
+We recompute cell type specific DHS overlap with disease specific GWAS SNPs + proxies.
+
+```{r}
+dir.create('output_data/gwas_snp_stat', showWarnings = FALSE)
+export.bed(immunochip_snps, 'output_data/gwas_snp_stat/all_snps.bed')
+export.bed(pics_ced, 'output_data/gwas_snp_stat/pics_ced.bed')
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

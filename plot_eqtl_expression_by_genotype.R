@@ -4,18 +4,15 @@ pacman::p_load(
   stringr,
   VariantAnnotation
 )
-vst_dir = 'output_data/expression'
-vst <- list.files(vst_dir, full.names = TRUE) %>%
-  map(function(p) {
-    tp_lvls <- c('t0', 't10', 't30', 't180')
-    vst_name <- str_extract(p, 't\\d+')
-    read_tsv(p) %>%
-      gather(sample, vst, -geneid) %>%
-      mutate(timepoint = factor(vst_name, levels = tp_lvls))
-  }) %>%
-  bind_rows()
-eqtl <- read_tsv('output_data/rasqual_low_pvalue.tsv')
-vcf <- readVcf('input_data/all.vcf')
+vst_path = 'out/post_proc/normalized_gene_counts.tsv'
+vst <- read_tsv(vst_path) %>%
+  gather(experiment, vst, -gene_id) %>%
+  mutate(timepoint = str_extract(experiment, '^[^_]+'),
+         timepoint = factor(timepoint, levels = c('time0', 'time10', 'time30', 'time180')),
+         sample = str_extract(experiment, '[^_]+$'))
+eqtl <- read_tsv('out/post_proc/CeD_LD_subset/LD_subset_all_all.tsv') %>%
+  dplyr::rename(snps = rs_id, hgnc = external_gene_id)
+vcf <- readVcf('out/preprocessing/all.vcf')
 snps <- unique(eqtl$snps)
 gt <- geno(vcf)$GT %>%
   as.data.frame %>%
@@ -29,7 +26,8 @@ gt <- geno(vcf)$GT %>%
                                heterozygous = '1|0',
                                alt = '1|1'))
 
-gene_snp_map <- eqtl %>% dplyr::select(hgnc, geneid = gene, SNP = snps)
+gene_snp_map <- eqtl %>%
+  dplyr::select(hgnc, gene_id, SNP = snps)
 
 df <- gene_snp_map %>%
   inner_join(vst) %>%
@@ -37,7 +35,7 @@ df <- gene_snp_map %>%
 
 # print highly expressed genes
 df %>%
-  group_by(hgnc, geneid) %>%
+  group_by(hgnc, gene_id) %>%
   summarise(n = n(), median = median(vst), mean = mean(vst)) %>%
   arrange(desc(median))
 
@@ -54,3 +52,18 @@ for (gene in unique(df$hgnc)) {
   ggsave(outpath, plot = p)
 }
 
+df %>%
+  filter(hgnc == 'CD28') %>%
+  mutate(source = ifelse(str_detect(sample, 'TCC-'),
+                         'Koning', 'Sollid')) %>%
+  ggplot() +
+  geom_boxplot(aes(genotype, vst, fill = genotype)) +
+  geom_jitter(width = 0.2, aes(genotype, vst, color = source)) +
+  facet_wrap(~ timepoint, nrow = 2) +
+  ggtitle('CD28')
+
+
+eqtl %>%
+  group_by(hgnc) %>%
+  summarise(pval = min(pval), FDR = min(FDR)) %>%
+  filter(hgnc == 'CD28')

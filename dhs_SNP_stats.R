@@ -86,3 +86,23 @@ df %>%
 ggsave('output_data/DHS_CeD_LD-SNPs_boxplot.png')
 
 df %>% write_csv('output_data/DHS_CeD_LD_summary.csv')
+
+#
+# debug
+#
+# Does not work since tot_snp are CeD LD SNPs ...
+# I have all the CEU SNPs on calculon, so this should be possible
+# to compute...
+#
+df %>%
+  mutate(
+    hetchrom_snp = tot_snp - num_snp,
+    hetchrom_cov = tot_cov - reg_cov,
+    hetchrom_snp_per_kb = hetchrom_snp / hetchrom_cov
+  ) %>%
+  ggplot(aes(x = group, y = hetchrom_snp_per_kb, color = group)) +
+  geom_boxplot() +
+  xlab('T-cell type') +
+  ylab('SNPs per kbp') +
+  ggtitle('Average number of SNPs per kbp open chromatin outside of GWAS CeD loci')
+
